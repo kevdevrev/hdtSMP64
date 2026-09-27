@@ -77,7 +77,12 @@ namespace hdt
 		w->getSolverInfo().m_numIterations = c.numIterations;
 		w->getSolverInfo().m_erp = c.erp;
 		w->m_enableWind = c.windEnabled;
+		w->m_useWindFieldAPI.store(c.useWindFieldAPI, std::memory_order_relaxed);
 		w->m_windStrength = c.windStrength;
+		w->m_fieldVelocityResponse.store(c.fieldVelocityResponse, std::memory_order_relaxed);
+		w->m_fieldGustFlutter.store(c.fieldGustFlutter, std::memory_order_relaxed);
+		w->m_fieldMotionRate.store(c.fieldMotionRate, std::memory_order_relaxed);
+		w->m_fieldTorqueOffset.store(c.fieldTorqueOffset, std::memory_order_relaxed);
 		w->m_distanceForNoWind = c.distanceForNoWind;
 		w->m_distanceForMaxWind = c.distanceForMaxWind;
 
@@ -126,7 +131,12 @@ namespace hdt
 		c.numIterations = w->getSolverInfo().m_numIterations;
 		c.erp = w->getSolverInfo().m_erp;
 		c.windEnabled = w->m_enableWind;
+		c.useWindFieldAPI = w->m_useWindFieldAPI.load(std::memory_order_relaxed);
 		c.windStrength = w->m_windStrength;
+		c.fieldVelocityResponse = w->m_fieldVelocityResponse.load(std::memory_order_relaxed);
+		c.fieldGustFlutter = w->m_fieldGustFlutter.load(std::memory_order_relaxed);
+		c.fieldMotionRate = w->m_fieldMotionRate.load(std::memory_order_relaxed);
+		c.fieldTorqueOffset = w->m_fieldTorqueOffset.load(std::memory_order_relaxed);
 		c.distanceForNoWind = w->m_distanceForNoWind;
 		c.distanceForMaxWind = w->m_distanceForMaxWind;
 
@@ -201,7 +211,12 @@ namespace hdt
 		LOG("solver.maxSubSteps", w->m_maxSubSteps);
 
 		LOG("wind.windStrength", w->m_windStrength);
+		LOG("wind.fieldVelocityResponse", w->m_fieldVelocityResponse.load(std::memory_order_relaxed));
+		LOG("wind.fieldGustFlutter", w->m_fieldGustFlutter.load(std::memory_order_relaxed));
+		LOG("wind.fieldMotionRate", w->m_fieldMotionRate.load(std::memory_order_relaxed));
+		LOG("wind.fieldTorqueOffset", w->m_fieldTorqueOffset.load(std::memory_order_relaxed));
 		LOG("wind.enabled", w->m_enableWind);
+		LOG("wind.useWindFieldAPI", w->m_useWindFieldAPI.load(std::memory_order_relaxed));
 		LOG("wind.distanceForNoWind", w->m_distanceForNoWind);
 		LOG("wind.distanceForMaxWind", w->m_distanceForMaxWind);
 

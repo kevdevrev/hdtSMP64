@@ -95,7 +95,12 @@ namespace hdt
 
 		//wind settings
 		bool m_enableWind = true;
-		float m_windStrength = 2.0f;           // compare to gravity acceleration of 9.8
+		std::atomic<bool> m_useWindFieldAPI{ true };
+		float m_windStrength = 2.0f;  // compare to gravity acceleration of 9.8
+		std::atomic<float> m_fieldVelocityResponse{ 0.08f };
+		std::atomic<float> m_fieldGustFlutter{ 1.0f };
+		std::atomic<float> m_fieldMotionRate{ 1.0f };
+		std::atomic<float> m_fieldTorqueOffset{ 0.8f };
 		float m_distanceForNoWind = 50.0f;     // how close to wind obstruction to fully block wind
 		float m_distanceForMaxWind = 3000.0f;  // how far to wind obstruction to not block wind
 

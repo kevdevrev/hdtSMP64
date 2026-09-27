@@ -1,5 +1,6 @@
 #pragma once
 
+#include "OpenShadersWind.h"
 #include "hdtSkinnedMeshSystem.h"
 #include "hdtSkyrimSystem.h"
 #include <BulletCollision/CollisionDispatch/btSimulationIslandManager.h>
@@ -51,6 +52,8 @@ namespace hdt
 
 		void applyGravity() override;
 		void applyWind(btScalar timeStep);
+		void updateWindField();
+		void applyWindField(btScalar timeStep);
 
 		void predictUnconstraintMotion(btScalar timeStep) override;
 		void integrateTransforms(btScalar timeStep) override;
@@ -62,6 +65,10 @@ namespace hdt
 
 		btVector3 m_windSpeed;       // world windspeed
 		btScalar m_windTime = 0.0f;  // wind simulation clock
+		btVector3 m_windFieldOriginOffset{ 0.f, 0.f, 0.f };
+		std::vector<SkyrimSystem*> m_windFieldSystems;
+		std::vector<CSPluginAPI::WindVector> m_windFieldPositions;
+		std::vector<CSPluginAPI::WindSample> m_windFieldSamples;
 
 	private:
 		std::vector<SkinnedMeshBody*> _bodies;

@@ -1,9 +1,12 @@
 
 #include "ActorManager.h"
+#include "OpenShadersWind.h"
 #include "WeatherManager.h"
 #include "dhdtOverrideManager.h"
 #include "hdtDefaultBBP.h"
 #include "hdtSkyrimPhysicsWorld.h"
+
+#include <cmath>
 
 namespace hdt
 {
@@ -492,7 +495,9 @@ namespace hdt
 		// We set which skeletons are active and we count them.
 		const auto world = SkyrimPhysicsWorld::get();
 		const auto wind = WeatherManager::getWindDirection();
-		const bool windEnabled = world->m_enableWind && !btFuzzyZero(wind.Length());
+		const bool useWindFieldAPI = OpenShadersWind::IsEnabled();
+		const bool hasNativeWind = !btFuzzyZero(wind.Length());
+		const bool windEnabled = world->m_enableWind && (useWindFieldAPI || hasNativeWind);
 
 		activeSkeletons = 0;
 		const float minCullingDistance2 = m_minCullingDistance * m_minCullingDistance;
@@ -550,12 +555,6 @@ namespace hdt
 				continue;
 			}
 
-			// Get the  wind direction pointing TOWARDS the source of the wind
-			auto reverseWindDir = wind * -1.0f;
-
-			// Normalize the direction vector to ensure accurate math
-			reverseWindDir.Unitize();
-
 			// we project the ray forward by m_distanceForMaxWind
 			RE::NiPoint3 origin;
 
@@ -567,6 +566,34 @@ namespace hdt
 				origin = owner->data.location;
 				origin.z += 100.0f;  // Offset by 100 units so at least it's not their feet
 			}
+
+			auto localWind = wind;
+			if (useWindFieldAPI) {
+				const auto windProvider = OpenShadersWind::GetInterface();
+				// Sample at this actor's shelter-ray origin so distant actors use their own local wind direction.
+				const CSPluginAPI::WindVector position{ origin.x, origin.y, origin.z };
+				CSPluginAPI::WindSample sample{};
+				// Without a published sample, retain the previous shelter factor until a direction is available.
+				if (!windProvider->SampleWind(&position, &sample, 1))
+					continue;
+				// Shelter only base wind + gusts: a nearby shockwave or wingbeat can come from a different direction.
+				// Transients are applied separately without this shelter attenuation; this ray does not test their obstruction.
+				localWind = RE::NiPoint3{
+					sample.baseVelocity.x + sample.gustVelocity.x,
+					sample.baseVelocity.y + sample.gustVelocity.y,
+					sample.baseVelocity.z + sample.gustVelocity.z
+				};
+				// A non-finite or negligible direction cannot produce a meaningful normalized shelter ray.
+				if (!std::isfinite(localWind.x) || !std::isfinite(localWind.y) ||
+					!std::isfinite(localWind.z) || btFuzzyZero(localWind.Length()))
+					continue;
+			}
+
+			// Get the  wind direction pointing TOWARDS the source of the wind
+			auto reverseWindDir = localWind * -1.0f;
+
+			// Normalize the direction vector to ensure accurate math
+			reverseWindDir.Unitize();
 
 			RE::NiPoint3 targetPos = origin + reverseWindDir * world->m_distanceForMaxWind;
 

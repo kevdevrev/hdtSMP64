@@ -125,7 +125,12 @@ namespace hdt
 
 		// --- wind ---
 		c.windEnabled = read(wind, "enabled", c.windEnabled);
+		c.useWindFieldAPI = read(wind, "useWindFieldAPI", c.useWindFieldAPI);
 		c.windStrength = clampv(read(wind, "windStrength", c.windStrength), 0.0f, 1000.0f);
+		c.fieldVelocityResponse = clampv(read(wind, "fieldVelocityResponse", c.fieldVelocityResponse), 0.0f, 0.5f);
+		c.fieldGustFlutter = clampv(read(wind, "fieldGustFlutter", c.fieldGustFlutter), 0.0f, 1.0f);
+		c.fieldMotionRate = clampv(read(wind, "fieldMotionRate", c.fieldMotionRate), 0.1f, 4.0f);
+		c.fieldTorqueOffset = clampv(read(wind, "fieldTorqueOffset", c.fieldTorqueOffset), 0.0f, 2.0f);
 		c.distanceForNoWind = clampv(read(wind, "distanceForNoWind", c.distanceForNoWind), 0.0f, 10000.0f);
 		c.distanceForMaxWind = clampv(read(wind, "distanceForMaxWind", c.distanceForMaxWind), 0.0f, 10000.0f);
 
@@ -217,8 +222,18 @@ namespace hdt
 		w.StartObject();
 		w.Key("enabled");
 		w.Bool(c.windEnabled);
+		w.Key("useWindFieldAPI");
+		w.Bool(c.useWindFieldAPI);
 		w.Key("windStrength");
 		w.Double(c.windStrength);
+		w.Key("fieldVelocityResponse");
+		w.Double(c.fieldVelocityResponse);
+		w.Key("fieldGustFlutter");
+		w.Double(c.fieldGustFlutter);
+		w.Key("fieldMotionRate");
+		w.Double(c.fieldMotionRate);
+		w.Key("fieldTorqueOffset");
+		w.Double(c.fieldTorqueOffset);
 		w.Key("distanceForNoWind");
 		w.Double(c.distanceForNoWind);
 		w.Key("distanceForMaxWind");

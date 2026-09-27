@@ -1,4 +1,5 @@
 #include "WeatherManager.h"
+#include "OpenShadersWind.h"
 #include "hdtSkyrimPhysicsWorld.h"
 
 #include <algorithm>
@@ -41,6 +42,14 @@ namespace hdt
 
 	void WeatherManager::runWeatherTickImpl(float delta)
 	{
+		// Skip native weather wind while WindField API is selected and available;
+		// the field supplies physics forces and ActorManager samples local shelter directions.
+		if (OpenShadersWind::IsEnabled()) {
+			m_cooldown = 0.f;
+			m_precipDirection = RE::NiPoint3{ 0.f, 0.f, 0.f };
+			return;
+		}
+
 		m_cooldown -= delta;
 		if (m_cooldown > 0.f)
 			return;

@@ -49,7 +49,12 @@ namespace hdt
 
 		// --- <wind> ---
 		bool windEnabled = true;  // JSON/XML tag wind."enabled"
+		bool useWindFieldAPI = true;
 		float windStrength = 2.0f;
+		float fieldVelocityResponse = 0.08f;
+		float fieldGustFlutter = 1.0f;
+		float fieldMotionRate = 1.0f;
+		float fieldTorqueOffset = 0.8f;
 		float distanceForNoWind = 50.0f;
 		float distanceForMaxWind = 3000.0f;
 

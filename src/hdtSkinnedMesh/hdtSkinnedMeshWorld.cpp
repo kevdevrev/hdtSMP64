@@ -224,6 +224,137 @@ namespace hdt
 		btDiscreteDynamicsWorldMt::applyGravity();
 	}
 
+	void SkinnedMeshWorld::updateWindField()
+	{
+		BT_PROFILE("HDTSMP_sampleWindField");
+		// Drop last update's system pointers even when wind was just disabled.
+		m_windFieldSystems.clear();
+		m_windFieldPositions.clear();
+		m_windFieldSamples.clear();
+		if (!SkyrimPhysicsWorld::get()->m_enableWind)
+			return;
+		const auto provider = OpenShadersWind::GetActiveInterface();
+		if (!provider)
+			return;
+
+		for (const auto& system : m_systems) {
+			// Share one field sample across the system, centered on the bones that receive wind.
+			btVector3 center(0.f, 0.f, 0.f);
+			uint32_t count = 0;
+			for (const auto& bone : system->m_bones) {
+				if (bone->m_rig.isStaticOrKinematicObject() || btFuzzyZero(bone->m_windFactor))
+					continue;
+				center += bone->m_rig.getWorldTransform().getOrigin();
+				++count;
+			}
+			if (count == 0)
+				continue;
+			// This runs before applyTranslationOffset, so the center is in Skyrim world coordinates.
+			center /= static_cast<btScalar>(count);
+			if (!std::isfinite(center.x()) || !std::isfinite(center.y()) || !std::isfinite(center.z()))
+				continue;
+			m_windFieldSystems.push_back(static_cast<SkyrimSystem*>(system.get()));
+			m_windFieldPositions.push_back({ center.x(), center.y(), center.z() });
+		}
+
+		m_windFieldSamples.resize(m_windFieldPositions.size());
+		// Keep each provider request within its batch limit; failed batches contribute no wind.
+		for (size_t offset = 0; offset < m_windFieldPositions.size();) {
+			const auto count = static_cast<uint32_t>(std::min(m_windFieldPositions.size() - offset,
+				static_cast<size_t>(CSPluginAPI::CSWindMaximumBatchSize)));
+			if (!provider->SampleWind(m_windFieldPositions.data() + offset, m_windFieldSamples.data() + offset, count))
+				std::fill_n(m_windFieldSamples.data() + offset, count, CSPluginAPI::WindSample{});
+			offset += count;
+		}
+	}
+
+	void SkinnedMeshWorld::applyWindField(btScalar timeStep)
+	{
+		constexpr btScalar kMaxFrameStep = 0.1f;
+		constexpr double kTwoPi = 6.283185307179586;
+		constexpr double kFlutterFrequencyHz = 2.0;
+		constexpr double kSecondaryFrequencyHz = 3.1;
+		constexpr btScalar kMaxFrequencyIncrease = 0.75f;
+		constexpr btScalar kSidewaysAmplitude = 0.06f;
+		constexpr btScalar kVerticalAmplitude = 0.02f;
+		const btVector3 spatialPhaseScale(0.012f, 0.017f, 0.02f);
+		constexpr btScalar kMaxRelativeResponse = 1.4f;
+		const auto world = SkyrimPhysicsWorld::get();
+		// API vectors are normalized wind responses, not velocities in Skyrim units per second.
+		const auto forceScale = world->m_windStrength * scaleSkyrim;
+		// Read the menu settings once per update rather than once per bone.
+		const auto response = world->m_fieldVelocityResponse.load(std::memory_order_relaxed);
+		const auto amount = world->m_fieldGustFlutter.load(std::memory_order_relaxed);
+		const auto rate = world->m_fieldMotionRate.load(std::memory_order_relaxed);
+		const auto offset = world->m_fieldTorqueOffset.load(std::memory_order_relaxed);
+		const auto flutterStep = clampScalar(timeStep, 0.0f, kMaxFrameStep) * rate;
+		const btVector3 up(0.f, 0.f, 1.f);
+		for (size_t index = 0; index < m_windFieldSystems.size(); ++index) {
+			const auto system = m_windFieldSystems[index];
+			const auto& sample = m_windFieldSamples[index];
+			// Keep short-lived forces such as shockwaves separate from the ambient wind.
+			const btVector3 ambient(sample.baseVelocity.x + sample.gustVelocity.x,
+				sample.baseVelocity.y + sample.gustVelocity.y, sample.baseVelocity.z + sample.gustVelocity.z);
+			const btVector3 transient(sample.transientVelocity.x, sample.transientVelocity.y, sample.transientVelocity.z);
+			// The actor's shelter factor attenuates ambient wind only; a transient may originate on another side.
+			const auto ambientForce = ambient * (system->m_windFactor * forceScale);
+			const auto transientForce = transient * forceScale;
+			// A bad API sample must not poison Bullet's body state.
+			if (!std::isfinite(ambientForce.x()) || !std::isfinite(ambientForce.y()) || !std::isfinite(ambientForce.z()) ||
+				!std::isfinite(transientForce.x()) || !std::isfinite(transientForce.y()) || !std::isfinite(transientForce.z()))
+				continue;
+			// Calm ambient wind skips normalization and flutter, while transients can still act on the bones.
+			const auto magnitude = ambientForce.length();
+			const bool hasAmbient = !btFuzzyZero(magnitude);
+			const auto direction = hasAmbient ? ambientForce / magnitude : btVector3(0.f, 0.f, 0.f);
+			// Vertical wind has no horizontal crosswind direction; use X as its lateral axis.
+			auto side = direction.cross(up);
+			if (btFuzzyZero(side.length2()))
+				side = btVector3(1.f, 0.f, 0.f);
+			else
+				side.normalize();
+			const auto lift = side.cross(direction);
+			// Integrate the rate: multiplying elapsed time by changing wind strength would jump the phase.
+			const auto shelteredStrength = (ambient * system->m_windFactor).length();
+			const auto frequencyScale = 1.f + kMaxFrequencyIncrease * shelteredStrength / (1.f + shelteredStrength);
+			system->m_windFieldFlutterTime += static_cast<double>(flutterStep) * frequencyScale;
+			// Reduce the phase before converting to float so long sessions do not lose small time steps.
+			const auto phase = static_cast<btScalar>(std::fmod(system->m_windFieldFlutterTime * kTwoPi * kFlutterFrequencyHz, kTwoPi));
+			const auto secondaryPhase = static_cast<btScalar>(std::fmod(system->m_windFieldFlutterTime * kTwoPi * kSecondaryFrequencyHz, kTwoPi));
+			const auto& position = m_windFieldPositions[index];
+			const btVector3 center(position.x, position.y, position.z);
+			for (const auto& bone : system->m_bones) {
+				// A zero XML wind factor opts this bone out of both ambient wind and transients.
+				if (bone->m_rig.isStaticOrKinematicObject() || btFuzzyZero(bone->m_windFactor))
+					continue;
+				auto windForce = ambientForce;
+				btVector3 pressureOffset(0.f, 0.f, 0.f);
+				if (hasAmbient) {
+					// Preserve FSMP's velocity response: less push downwind, up to 40% more against the wind.
+					const auto relativeScale = response == 0.f ? 1.f : clampScalar((ambientForce - bone->m_rig.getLinearVelocity() * response).dot(direction) / magnitude, 0.f, kMaxRelativeResponse);
+					windForce = ambientForce * relativeScale;
+					// Avoid waveform work when both flutter and offset-force torque are disabled.
+					if (amount > 0.f || offset > 0.f) {
+						// Reconstruct world coordinates so recentering cannot shift flutter phases.
+						const auto origin = bone->m_rig.getWorldTransform().getOrigin() + m_windFieldOriginOffset;
+						// Nearby bones stay in phase; using local offsets avoids jumps when the actor moves or wind turns.
+						const auto spatialPhase = (origin - center).dot(spatialPhaseScale);
+						const auto flutter = std::sin(phase + spatialPhase);
+						const auto secondaryFlutter = std::sin(secondaryPhase - spatialPhase);
+						// Both components are perpendicular to the wind; gust strength comes only from the sampled field.
+						windForce += (side * (flutter * kSidewaysAmplitude) + lift * (secondaryFlutter * kVerticalAmplitude)) * (magnitude * amount);
+						// Flutter amount also scales oscillating torque; zero leaves only the steady pressure offset.
+						pressureOffset = (side * (flutter * amount) + lift * (0.35f + secondaryFlutter * 0.25f * amount)) * offset;
+					}
+				}
+				// Bullet integrates these forces over the substeps; do not multiply them by delta time here.
+				bone->m_rig.applyForce(windForce * bone->m_windFactor, pressureOffset);
+				// Transients bypass shelter and flutter, and act at the center without added torque.
+				bone->m_rig.applyCentralForce(transientForce * bone->m_windFactor);
+			}
+		}
+	}
+
 	void SkinnedMeshWorld::applyWind(btScalar timeStep)
 	{
 		constexpr btScalar kMaxFrameStep = 0.1f;
@@ -237,6 +368,10 @@ namespace hdt
 		constexpr btScalar kPressureCenterOffset = 0.8f;
 
 		BT_PROFILE("HDTSMP_applyWind");
+		if (OpenShadersWind::IsEnabled()) {
+			applyWindField(timeStep);
+			return;
+		}
 
 		const btScalar windMagnitude = m_windSpeed.length();
 		if (btFuzzyZero(windMagnitude))

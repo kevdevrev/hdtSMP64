@@ -2,6 +2,7 @@
 
 #include "ActorManager.h"
 #include "GlobalConfig.h"
+#include "OpenShadersWind.h"
 #include "SMPDebug.h"
 #include "UI/Localization.h"
 #include "Validator/hdtAssetValidator.h"
@@ -787,6 +788,52 @@ namespace
 		}
 	}
 
+	void WindFieldToggle(SkyrimPhysicsWorld* w, const GlobalConfig& d)
+	{
+		const bool hasWindFieldApi = hdt::OpenShadersWind::GetInterface() != nullptr;
+		if (!hasWindFieldApi)
+			return;
+		bool useWindFieldAPI = w->m_useWindFieldAPI.load(std::memory_order_relaxed);
+		if (rowCheck("Use WindField API", "Use WindField API from OpenShaders.", &useWindFieldAPI, d.useWindFieldAPI)) {
+			w->m_useWindFieldAPI.store(useWindFieldAPI, std::memory_order_relaxed);
+			commitReset();
+		}
+	}
+
+	void windFieldFloat(const char* label, const char* help, std::atomic<float>& setting, float def, float lo, float hi)
+	{
+		float value = setting.load(std::memory_order_relaxed);
+		const bool commit = rowFloat(label, help, &value, def, lo, hi, "%.2f");
+		// Publish every drag frame; rowFloat requests persistence only on release or reset.
+		setting.store(value, std::memory_order_relaxed);
+		if (commit)
+			hdt::saveUserSettings();
+	}
+
+	void WindFieldResponseBody(SkyrimPhysicsWorld* w, const GlobalConfig& d)
+	{
+		if (!hdt::OpenShadersWind::IsEnabled())
+			return;
+		section(fa::Wind, "Open Shaders wind response");
+		if (beginRows("windFieldResponse")) {
+			ImGuiMCP::BeginDisabled(!w->m_enableWind);
+			windFieldFloat("Velocity response",
+				"Reduces ambient push when moving with the wind; increases it when moving against it. Zero disables it. This is an artistic response, not a calibrated air speed.",
+				w->m_fieldVelocityResponse, d.fieldVelocityResponse, 0.0f, 0.5f);
+			windFieldFloat("Flutter amount",
+				"Adds sideways/upward motion to sampled ambient wind without modulating its forward strength. Zero disables flutter forces and oscillating torque; one uses the base flutter amount. Transients are unchanged.",
+				w->m_fieldGustFlutter, d.fieldGustFlutter, 0.0f, 1.0f);
+			windFieldFloat("Flutter rate",
+				"Scales the procedural animation rate. Does not change Open Shaders wind-field travel speed.",
+				w->m_fieldMotionRate, d.fieldMotionRate, 0.1f, 4.0f);
+			windFieldFloat("Torque offset (units)",
+				"Offset in Skyrim units for applying ambient wind force, producing twisting. Zero applies force at the center. Default: 0.8. Transients stay centered.",
+				w->m_fieldTorqueOffset, d.fieldTorqueOffset, 0.0f, 2.0f);
+			ImGuiMCP::EndDisabled();
+			endRows();
+		}
+	}
+
 	void WindBody()
 	{
 		filterBox();
@@ -799,6 +846,7 @@ namespace
 					"Apply FSMP's own wind force to physics objects.",
 					&w->m_enableWind, d.windEnabled))
 				commitReset();
+			WindFieldToggle(w, d);
 			ImGuiMCP::BeginDisabled(!w->m_enableWind);
 			if (rowFloat("Wind strength",
 					"Base wind strength. For reference, gravity is 9.8.",
@@ -815,6 +863,8 @@ namespace
 			ImGuiMCP::EndDisabled();
 			endRows();
 		}
+
+		WindFieldResponseBody(w, d);
 
 		if (!g_filtering && w->m_enableWind && w->m_distanceForNoWind >= w->m_distanceForMaxWind)
 			warn("Distance for no wind should be below distance for max wind.");

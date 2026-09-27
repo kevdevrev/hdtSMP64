@@ -68,6 +68,8 @@ set(SOURCE_FILES
 	"${SOURCE_DIR}/DynamicHDT.h"
 	"${SOURCE_DIR}/WeatherManager.cpp"
 	"${SOURCE_DIR}/WeatherManager.h"
+	"${SOURCE_DIR}/OpenShadersWind.cpp"
+	"${SOURCE_DIR}/OpenShadersWind.h"
 	"${SOURCE_DIR}/ActorManager.cpp"
 	"${SOURCE_DIR}/ActorManager.h"
 	"${SOURCE_DIR}/hdtSkyrimPhysicsWorld.cpp"

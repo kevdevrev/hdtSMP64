@@ -26,7 +26,12 @@
   },
   "wind": {
     "enabled": true,
+    "useWindFieldAPI": true,
     "windStrength": 2.0,
+    "fieldVelocityResponse": 0.08,
+    "fieldGustFlutter": 1.0,
+    "fieldMotionRate": 1.0,
+    "fieldTorqueOffset": 0.8,
     "distanceForNoWind": 50.0,
     "distanceForMaxWind": 2000.0
   },

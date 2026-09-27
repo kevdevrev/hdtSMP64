@@ -1,6 +1,7 @@
 #include "ActorManager.h"
 #include "Events.h"
 #include "Hooks.h"
+#include "OpenShadersWind.h"
 #include "PluginInterfaceImpl.h"
 #include "SMPDebug.h"
 #include "UI/FSMPMenu.h"
@@ -676,6 +677,7 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 		break;
 	case SKSE::MessagingInterface::kPostPostLoad:
 		{
+			hdt::OpenShadersWind::Initialize();
 			Hooks::InstallHighPriority();
 			hdt::g_pluginInterface.onPostPostLoad();
 			checkOldPlugins();

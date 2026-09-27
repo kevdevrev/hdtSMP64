@@ -152,7 +152,10 @@ namespace hdt
 		{
 			BT_PROFILE("HDTSMP_doUpdate2ndStep");
 			updateActiveState();
+			// Sample in Skyrim world coordinates before applyTranslationOffset recenters the physics bodies.
+			updateWindField();
 			auto offset = applyTranslationOffset();
+			m_windFieldOriginOffset = offset;
 			stepSimulation(remainingTimeStep, 0, tick);
 			restoreTranslationOffset(offset);
 			m_accumulatedInterval = 0;

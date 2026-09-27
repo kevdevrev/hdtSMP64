@@ -39,6 +39,8 @@ namespace hdt
 		bool m_initialized = false;
 		float m_windFactor = 1.f;  // wind factor for the system (i.e., full actor/skeleton) (calculated based off obstructions)
 
+		double m_windFieldFlutterTime = 0.0;  // WindField API flutter only; native wind uses m_windTime.
+
 		// angular velocity damper
 		btQuaternion m_lastRootRotation;
 	};
