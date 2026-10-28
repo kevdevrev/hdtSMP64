@@ -1,6 +1,6 @@
 
 #include "ActorManager.h"
-#include "WeatherManager.h"
+#include "WindManager.h"
 #include "dhdtOverrideManager.h"
 #include "hdtDefaultBBP.h"
 #include "hdtSkyrimPhysicsWorld.h"
@@ -491,8 +491,7 @@ namespace hdt
 
 		// We set which skeletons are active and we count them.
 		const auto world = SkyrimPhysicsWorld::get();
-		const auto wind = WeatherManager::getWindDirection();
-		const bool windEnabled = world->m_enableWind && !btFuzzyZero(wind.Length());
+		const bool windEnabled = world->m_enableWind;
 
 		activeSkeletons = 0;
 		const float minCullingDistance2 = m_minCullingDistance * m_minCullingDistance;
@@ -550,12 +549,6 @@ namespace hdt
 				continue;
 			}
 
-			// Get the  wind direction pointing TOWARDS the source of the wind
-			auto reverseWindDir = wind * -1.0f;
-
-			// Normalize the direction vector to ensure accurate math
-			reverseWindDir.Unitize();
-
 			// we project the ray forward by m_distanceForMaxWind
 			RE::NiPoint3 origin;
 
@@ -568,6 +561,12 @@ namespace hdt
 				origin.z += 100.0f;  // Offset by 100 units so at least it's not their feet
 			}
 
+			RE::NiPoint3 wind;
+			// The selected controller supplies the ambient direction at this actor's shelter-ray origin.
+			if (!g_windManager.shelterDirection(origin, wind))
+				continue;
+			auto reverseWindDir = wind * -1.0f;
+			reverseWindDir.Unitize();
 			RE::NiPoint3 targetPos = origin + reverseWindDir * world->m_distanceForMaxWind;
 
 			RE::NiPoint3 hitLocation;

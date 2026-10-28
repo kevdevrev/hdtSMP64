@@ -1,4 +1,5 @@
 #include "hdtSkinnedMeshWorld.h"
+#include "WindManager.h"
 #include "hdtBoneScaleConstraint.h"
 #include "hdtDispatcher.h"
 #include "hdtSkinnedMeshAlgorithm.h"
@@ -80,6 +81,7 @@ namespace hdt
 		}
 
 		m_systems.push_back(hdt::make_smart(system));
+		m_windSystemIds.emplace(system, ++m_nextWindSystemId);
 		for (int i = 0; i < system->m_meshes.size(); ++i) {
 			addCollisionObject(system->m_meshes[i].get(), 1, 1);
 		}
@@ -124,6 +126,7 @@ namespace hdt
 
 		std::swap(*idx, m_systems.back());
 		m_systems.pop_back();
+		m_windSystemIds.erase(system);
 
 		system->m_world = nullptr;
 	}
@@ -151,7 +154,7 @@ namespace hdt
 	{
 		applyGravity();
 		if (hdt::SkyrimPhysicsWorld::get()->m_enableWind)
-			applyWind(remainingTimeStep);
+			g_windManager.applyWind(*this, remainingTimeStep);
 
 		while (remainingTimeStep > fixedTimeStep) {
 			internalSingleStepSimulation(fixedTimeStep);

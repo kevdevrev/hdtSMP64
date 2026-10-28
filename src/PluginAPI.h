@@ -1,5 +1,13 @@
 #pragma once
 
+#include "WindAPI.h"
+
+namespace RE
+{
+	template <class Event>
+	class BSTEventSink;
+}
+
 /*Plugins should register for messages from hdtSMP64 via SKSE during SKSE's PostLoad event.
 * When ready, hdtSMP64 will send a message of type MSG_STARTUP containing a PluginInterface* as data.
 *
@@ -12,7 +20,7 @@
 * A plugin MUST verify compatibility with the Bullet version if it intends to interact with any Bullet object.
 * Refer to Bullet documentation for information about their versioning scheme.
 *
-* If compatible, the plugin may call other functions on the PluginInterface at any time.
+* If compatible, the plugin may call other functions subject to their threading restrictions.
 * The PluginInterface pointer shall remain valid until shutdown.
 */
 
@@ -64,7 +72,7 @@ namespace hdt
 		};
 
 	public:
-		constexpr static Version INTERFACE_VERSION{ 2, 0, 0 };
+		constexpr static Version INTERFACE_VERSION{ 2, 1, 0 };
 		constexpr static Version BULLET_VERSION{ 3, 24, 0 };
 
 	public:
@@ -77,5 +85,12 @@ namespace hdt
 
 		virtual void addListener(IPostStepListener*) = 0;
 		virtual void removeListener(IPostStepListener*) = 0;
+
+		/** @brief Game thread only: register the sole wind controller; false if another plugin owns wind. */
+		virtual bool registerWindController(const WindController*) = 0;
+		/** @brief Game thread only: release ownership after the current simulation finishes. */
+		virtual void unregisterWindController(const WindController*) = 0;
+		/** @brief Game thread only: query this controller's active state; the master wind switch can still suppress forces. */
+		virtual bool isWindControllerActive(const WindController*) const = 0;
 	};
 }

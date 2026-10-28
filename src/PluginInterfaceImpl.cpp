@@ -1,4 +1,5 @@
 #include "PluginInterfaceImpl.h"
+#include "WindManager.h"
 
 hdt::PluginInterfaceImpl hdt::g_pluginInterface;
 
@@ -48,4 +49,19 @@ void hdt::PluginInterfaceImpl::init(const SKSE::LoadInterface* skse)
 	if (!m_skseMessagingInterface) {
 		logger::warn("Failed to get a messaging interface. Plugins will not work.");
 	}
+}
+
+bool hdt::PluginInterfaceImpl::registerWindController(const WindController* controller)
+{
+	return g_windManager.registerController(controller);
+}
+
+void hdt::PluginInterfaceImpl::unregisterWindController(const WindController* controller)
+{
+	g_windManager.unregisterController(controller);
+}
+
+bool hdt::PluginInterfaceImpl::isWindControllerActive(const WindController* controller) const
+{
+	return g_windManager.isActive(controller);
 }

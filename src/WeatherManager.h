@@ -15,6 +15,8 @@ namespace hdt
 
 		static void runWeatherTick(float delta) { get()->runWeatherTickImpl(delta); }
 		static RE::NiPoint3 getWindDirection() { return get()->m_precipDirection; }
+		// Refresh immediately when an external controller releases wind ownership.
+		static void resetCooldown() { get()->m_cooldown = 0.f; }
 
 	private:
 		WeatherManager() = default;

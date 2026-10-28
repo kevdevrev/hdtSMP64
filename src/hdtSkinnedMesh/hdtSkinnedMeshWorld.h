@@ -1,14 +1,18 @@
 #pragma once
 
+#include "WindAPI.h"
 #include "hdtSkinnedMeshSystem.h"
 #include "hdtSkyrimSystem.h"
 #include <BulletCollision/CollisionDispatch/btSimulationIslandManager.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorldMt.h>
+#include <unordered_map>
 
 namespace hdt
 {
 	class SkinnedMeshWorld : protected btDiscreteDynamicsWorldMt
 	{
+		friend class WindManager;
+
 	public:
 		SkinnedMeshWorld();
 		~SkinnedMeshWorld();
@@ -51,6 +55,7 @@ namespace hdt
 
 		void applyGravity() override;
 		void applyWind(btScalar timeStep);
+		void applyExternalWind(const WindController& controller, btScalar timeStep);
 
 		void predictUnconstraintMotion(btScalar timeStep) override;
 		void integrateTransforms(btScalar timeStep) override;
@@ -62,6 +67,13 @@ namespace hdt
 
 		btVector3 m_windSpeed;       // world windspeed
 		btScalar m_windTime = 0.0f;  // wind simulation clock
+		btVector3 m_windOriginOffset{ 0.f, 0.f, 0.f };
+		std::uint64_t m_nextWindSystemId{};
+		std::unordered_map<SkinnedMeshSystem*, std::uint64_t> m_windSystemIds;
+		std::vector<WindSystem> m_windSystems;
+		std::vector<WindBody> m_windBodies;
+		std::vector<WindForce> m_windForces;
+		std::vector<btRigidBody*> m_windRigidBodies;
 
 	private:
 		std::vector<SkinnedMeshBody*> _bodies;

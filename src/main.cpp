@@ -6,6 +6,7 @@
 #include "UI/FSMPMenu.h"
 #include "Validator/hdtAssetValidator.h"
 #include "WeatherManager.h"
+#include "WindManager.h"
 #include "config.h"
 #include "dhdtOverrideManager.h"
 #include "dhdtPapyrusFunctions.h"
@@ -752,6 +753,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 	}
 
 	//
+	Events::Sources::FrameEventSource::GetSingleton()->AddEventSink(&hdt::g_windManager);
 	Events::Sources::FrameEventSource::GetSingleton()->AddEventSink(hdt::ActorManager::instance());
 	Events::Sources::FrameEventSource::GetSingleton()->AddEventSink(hdt::SkyrimPhysicsWorld::get());
 

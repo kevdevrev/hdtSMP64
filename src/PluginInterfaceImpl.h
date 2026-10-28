@@ -21,6 +21,10 @@ namespace hdt
 		virtual void addListener(IPostStepListener* l) override;
 		virtual void removeListener(IPostStepListener* l) override;
 
+		bool registerWindController(const WindController*) override;
+		void unregisterWindController(const WindController*) override;
+		bool isWindControllerActive(const WindController*) const override;
+
 		void onPostPostLoad();
 
 		void onPreStep(const PreStepEvent& e) { m_preStepDispatcher.SendEvent(std::addressof(e)); }

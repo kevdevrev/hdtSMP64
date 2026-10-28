@@ -1,6 +1,7 @@
 #include "hdtSkyrimPhysicsWorld.h"
 #include "PluginInterfaceImpl.h"
 #include "WeatherManager.h"
+#include "WindManager.h"
 #include "hdtPhysicsProfiler.h"
 
 #include <LinearMath/btQuickprof.h>
@@ -153,6 +154,7 @@ namespace hdt
 			BT_PROFILE("HDTSMP_doUpdate2ndStep");
 			updateActiveState();
 			auto offset = applyTranslationOffset();
+			m_windOriginOffset = offset;
 			stepSimulation(remainingTimeStep, 0, tick);
 			restoreTranslationOffset(offset);
 			m_accumulatedInterval = 0;
@@ -333,7 +335,7 @@ namespace hdt
 		}
 
 		if (m_enableWind) {
-			WeatherManager::runWeatherTick(RE::GetSecondsSinceLastFrame());
+			g_windManager.updateWeather(RE::GetSecondsSinceLastFrame());
 		}
 
 		LARGE_INTEGER ticks;

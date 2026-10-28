@@ -5,6 +5,7 @@
 #include "SMPDebug.h"
 #include "UI/Localization.h"
 #include "Validator/hdtAssetValidator.h"
+#include "WindManager.h"
 #include "config.h"
 #include "hdtSkyrimPhysicsWorld.h"
 
@@ -790,13 +791,16 @@ namespace
 	void WindBody()
 	{
 		filterBox();
+		const auto controller = hdt::g_windManager.controllerName();
+		if (!controller.empty())
+			ImGuiMCP::Text("%s %s", tr("Wind controlled by:"), controller.c_str());
 		auto* w = SkyrimPhysicsWorld::get();
 		const GlobalConfig& d = hdt::shippedDefaults();
 
 		section(fa::Wind, "Wind");
 		if (beginRows("wind")) {
-			if (rowCheck("Enable FSMP-native wind",
-					"Apply FSMP's own wind force to physics objects.",
+			if (rowCheck("Enable wind",
+					"Apply wind from the selected controller to physics objects.",
 					&w->m_enableWind, d.windEnabled))
 				commitReset();
 			ImGuiMCP::BeginDisabled(!w->m_enableWind);
