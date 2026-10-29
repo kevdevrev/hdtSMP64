@@ -32,7 +32,7 @@ namespace hdt
 				continue;
 			center /= static_cast<btScalar>(count);
 			m_windSystems.push_back({ m_windSystemIds.at(system.get()), { center.x(), center.y(), center.z() },
-				static_cast<SkyrimSystem*>(system.get())->m_windFactor, first, count });
+				controller.useNativeShelter ? static_cast<SkyrimSystem*>(system.get())->m_windFactor : 1.f, first, count });
 		}
 
 		// Include an empty frame so the controller can release state for removed systems.

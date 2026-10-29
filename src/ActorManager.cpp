@@ -491,7 +491,7 @@ namespace hdt
 
 		// We set which skeletons are active and we count them.
 		const auto world = SkyrimPhysicsWorld::get();
-		const bool windEnabled = world->m_enableWind;
+		const bool windEnabled = world->m_enableWind && g_windManager.usesNativeShelter();
 
 		activeSkeletons = 0;
 		const float minCullingDistance2 = m_minCullingDistance * m_minCullingDistance;

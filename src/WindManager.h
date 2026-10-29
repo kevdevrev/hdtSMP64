@@ -14,6 +14,8 @@ namespace hdt
 		bool registerController(const WindController* controller);
 		void unregisterController(const WindController* controller);
 		bool isActive(const WindController* controller);
+		/** @brief Whether actor updates should run FSMP's shelter checks. */
+		bool usesNativeShelter() const { return !m_active || m_controller.useNativeShelter; }
 		std::string controllerName();
 		bool shelterDirection(const RE::NiPoint3& position, RE::NiPoint3& direction);
 		void updateWeather(float delta);

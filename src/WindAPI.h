@@ -68,5 +68,7 @@ namespace hdt
 		bool (*sampleShelter)(void*, const WindVector& position, WindVector& direction) noexcept {};
 		bool (*evaluate)(void*, const WindFrame&, WindForce* outputs) noexcept {};
 		bool (*isEnabled)(void*) noexcept {};
+		/** @brief False skips native shelter raycasts and supplies shelterFactor 1; sampleShelter may be null. */
+		bool useNativeShelter{ true };
 	};
 }

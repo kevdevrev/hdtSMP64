@@ -10,7 +10,7 @@ namespace hdt
 	bool WindManager::registerController(const WindController* controller)
 	{
 		if (!controller || controller->version != 2 || controller->size < sizeof(WindController) ||
-			!controller->name || !controller->name[0] || !controller->sampleShelter || !controller->evaluate || !controller->isEnabled)
+			!controller->name || !controller->name[0] || (controller->useNativeShelter && !controller->sampleShelter) || !controller->evaluate || !controller->isEnabled)
 			return false;
 		if (m_owner)
 			return m_owner == controller;
